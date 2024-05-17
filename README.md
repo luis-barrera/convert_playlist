@@ -57,10 +57,10 @@ PLAYLIST_NAME=#6
     
     Replace the next values:
 
-    - For #1 #2 #3 you have to get it from [Spotify Developer Console](https://developer.spotify.com/), use this [video](https://www.youtube.com/watch?v=kaBVN8uP358) as tutorial. Thanks to Spotipy people for the tutorial.
-    - For #4, go to your spotify app (desktpo, mobile, fridge) and copy the URL that gives you when click on "Share".
-    - For #5, you have to create an Google Developer Account and get access to Youtube Data API v3, use this [tutorial](https://www.youtube.com/watch?v=I5ili_1G0Vk)(I don't own this content, credits to Jie Jenn channel) as example.
-    -  For #6, is the name you want to for the Youtube Playlist. Be careful, don't use especial characters in the name, can give some errors.
+- For #1 #2 #3 you have to get it from [Spotify Developer Console](https://developer.spotify.com/), use this [video](https://www.youtube.com/watch?v=kaBVN8uP358) as tutorial. Thanks to Spotipy people for the tutorial.
+- For #4, go to your spotify app (desktop, mobile, fridge, idk...) and copy the URL that gives you when click on "Share".
+- For #5, you have to create an Google Developer Account and get access to Youtube Data API v3, use this [tutorial](https://www.youtube.com/watch?v=I5ili_1G0Vk)(I don't own this content, credits to Jie Jenn's channel) as example.
+- For #6, is the name you want to for the Youtube Playlist. Be careful, don't use especial characters in the name, can give some errors.
 
 7. Run the script, some browser windows will open asking for permissions to your Spotify and Youtube accounts:
 
