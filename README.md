@@ -55,7 +55,7 @@ YOUTUBE_API_CLIENT_SECRETS_FILE=#5
 PLAYLIST_NAME=#6
 ```
     
-    Replace the next values:
+Replace the next values:
 
 - For #1 #2 #3 you have to get it from [Spotify Developer Console](https://developer.spotify.com/), use this [video](https://www.youtube.com/watch?v=kaBVN8uP358) as tutorial. Thanks to Spotipy people for the tutorial.
 - For #4, go to your spotify app (desktop, mobile, fridge, idk...) and copy the URL that gives you when click on "Share".
