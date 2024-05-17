@@ -1,0 +1,8 @@
+# Python
+venv/
+.cache
+
+client_*
+
+creds.pkl
+.env
