@@ -1,6 +1,7 @@
 import os
 import pickle
 import json
+import time
 from dotenv import dotenv_values
 
 import spotipy
@@ -10,8 +11,9 @@ import google_auth_oauthlib.flow
 import googleapiclient.discovery
 from googleapiclient.errors import HttpError
 
+from ytmusicapi import YTMusic
 
-class ConvertSpotifyPlaylist();
+class ConvertSpotifyPlaylist():
     # Load .env
     environment = dotenv_values(".env")
     # List of tracks on Spotify
@@ -19,134 +21,79 @@ class ConvertSpotifyPlaylist();
     # Id of playlist, created by YouTube
     yt_playlist = ""
     # Spotify connection
-    sp = Null
+    sp = ""
     # Youtube connection
-    youtube = Null
+    youtube = ""
+    # File containing tracks not found
+    not_found_txt = open("not_found.txt", "wt")
 
 
     def connectSpotify(self):
         print("Connecting to Spotify")
 
         # Connect to spotify
-        sp = spotipy.Spotify(
-                auth_manager=SpotifyOAuth(
-                    client_id=environment["SPOTIFY_APP_CLIENT_ID"],
-                    client_secret=environment["SPOTIFY_APP_CLIENT_SECRET"],
-                    redirect_uri=environment["SPOTIFY_APP_REDIRECT_URI"],
+        self.sp = spotipy.Spotify(
+                auth_manager = SpotifyOAuth(
+                    client_id = self.environment["SPOTIFY_APP_CLIENT_ID"],
+                    client_secret = self.environment["SPOTIFY_APP_CLIENT_SECRET"],
+                    redirect_uri = self.environment["SPOTIFY_APP_REDIRECT_URI"],
                     scope="user-library-read"))
 
-        return sp
+        return self.sp
 
     def getSpotifyPlaylist(self):
         print("Getting Spotify tracks") 
 
-        # Get tracks on spotify playlist
-        tracks_in_playlist = sp.playlist_tracks(environment["SPOTIFY_PLAYLIST_URL"])
-    
-        for idx, item in enumerate(tracks_in_playlist["items"]):
-            track = item["track"]
-            # Get track's name
-            track_name = track["name"]
-            # Get track's artist
-            artist = track["artists"][0]["name"]
-            # Adds to list
-            sp_tracks_list.append([artist, track_name])
+        page = 0
+        my_limit = 50
+        do_while = True
 
-        return sp_tracks_list
+        while do_while:
+            # Get tracks on spotify playlist
+            tracks_in_playlist = self.sp.playlist_tracks(self.environment["SPOTIFY_PLAYLIST_URL"], limit = my_limit, offset = page * my_limit)
+
+            for idx, item in enumerate(tracks_in_playlist["items"]):
+                track = item["track"]
+                # Get track's name
+                track_name = track["name"]
+                # Get track's artist
+                artist = track["artists"][0]["name"]
+                # Adds to list
+                self.sp_tracks_list.append([artist, track_name])
+
+            page += 1
+            do_while = len(tracks_in_playlist["items"]) == my_limit
+        
+        return self.sp_tracks_list
 
 
     def connectYoutube(self):
         print("Connecting to YouTube")
         
-        # Security
-        os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+        self.youtube = YTMusic("oauth.json")
 
-        try:
-            # Tries to open previous credentials
-            with open('creds.pkl', 'rb') as creds_file:
-                credentials = pickle.load(creds_file)
-        except IOError:
-            # Google API scope
-            scopes = ["https://www.googleapis.com/auth/youtube"]
-            client_secrets_file = environment["YOUTUBE_API_CLIENT_SECRETS_FILE"]
-
-            # Opens browser
-            flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-                client_secrets_file, scopes)
-            credentials = flow.run_local_server(port=0)
-
-            # Save credentials to file to reuse
-            output = open('creds.pkl', 'wb')
-            pickle.dump(credentials, output, -1)
-            output.close()
-        finally:
-            api_service_name = "youtube"
-            api_version = "v3"
-
-            # Connect to Youtube
-            youtube = googleapiclient.discovery.build(api_service_name, api_version,
-                                                  credentials=credentials)
-
-        return youtube
+        return self.youtube
     
 
     def getYoutubePlaylist(self):
-        playlist_name = environment["PLAYLIST_NAME"],
+        playlist_name = self.environment["PLAYLIST_NAME"],
 
-        print("Finding playlist in user library: ", playlist_name)
+        print("Finding playlist in user library: ", playlist_name[0])
 
-        get_playlists = youtube.playlists().list().execute()
-        playlists = get_playlists["items"]
 
-        for playlist in playlists:
-            if playlist["snippet"]["title"] == playlist_name[0]:
-                yt_playlist = playlist["id"]
-                print("Playlist ID", yt_playlist)
-                return yt_playlist
-
-        # If no playlist not founded, create a new playlist
-        print("Playlist not found. Creating YouTube playlist")
-        playlists_insert_response = youtube.playlists().insert(
-            part = "snippet,status",
-            body = dict(
-                snippet = dict(
-                    title = playlist_name[0],
-                    description = "Playlist importada de Spotify"
-                ),
-                status = dict(
-                    privacyStatus = "private"
-                )
-            )
-        ).execute()
-
-        yt_playlist = playlists_insert_response["id"]
-        print("Playlist ID", yt_playlist)
-        return yt_playlist
+        self.yt_playlist = self.youtube.create_playlist(playlist_name[0], "Playlist creted using script")
+        print("Playlist ID", self.yt_playlist)
+        return self.yt_playlist
 
 
     def addTrackToYoutube(self):
         print("Adding tracks to YouTube playlist")
 
         # Iterate tracks
-        for artist, track_name in sp_tracks_list:
-            max_tries = 5
-            retry_count = 0
-            backoff_time = 1
+        for artist, track_name in self.sp_tracks_list:
+            self.addTrackToPlaylist(artist, track_name)
 
-            # Sometimes the API gives errors
-            while retry_count < max_tries:
-                try:
-                    addTrackToPlaylist(artist, track_name)
-                    retry_count = max_tries
-                except HttpError as e:
-                    if e.resp.status == 409 and 'SERVICE_UNAVAILABLE' in str(e):
-                        retry_count += 1
-                        print(f"Attempt {retry_count} failed. Retrying in {backoff_time} seconds...")
-                        time.sleep(backoff_time)
-                        # Exponential backoff
-                        backoff_time *= 2
-                    else:
-                        raise Exception("Failed to add the song to the playlist after multiple retries.")
+        self.not_found_txt.close()
 
 
     # Search for a track and add it to playlist
@@ -154,36 +101,24 @@ class ConvertSpotifyPlaylist();
         # Search using artist and track
         q_string = f"{artist} {track_name}",
 
-        print("Searching track: ", q_string)
+        print("Searching track: ", q_string[0])
         # Send request to API
-        search_response = youtube.search().list(
-            part = "snippet",
-            q = q_string,
-            type = "video"
-        ).execute()
+        search_results = self.youtube.search(q_string[0])
 
-        # From response, get the first result, and then its ID
-        video_id = search_response["items"][0]["id"]["videoId"]
+        try:
+            # From response, get the first result, and then its ID
+            video_id = search_results[0]["videoId"]
 
-        print("Adding track to playlist: id ", video_id)
+            print("Adding track to playlist: id ", video_id)
 
-        # Send a resquest to add a track to the playlist
-        add_track_to_playlist = youtube.playlistItems().insert(
-            part = "snippet",
-            body = dict(
-                snippet = dict(
-                    playlistId = yt_playlist,
-                    resourceId = dict(
-                        videoId = video_id,
-                        kind = 'youtube#video'
-                    ) 
-                )
-                
-            )
-        ).execute()
-
-        return add_track_to_playlist
-
+            # Send a resquest to add a track to the playlist
+            if video_id:
+                add_track_to_playlist = self.youtube.add_playlist_items(self.yt_playlist, [video_id])
+            else:
+                raise Exception("video_id is empty")
+        except Exception as e:
+            print("Error trying to add track", q_string[0])
+            self.not_found_txt.write(q_string[0] + "\n")
     
 if __name__ == '__main__':
     converter = ConvertSpotifyPlaylist()
